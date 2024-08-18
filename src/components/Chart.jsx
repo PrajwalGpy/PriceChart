@@ -42,7 +42,7 @@ const Chart = ({ coinData }) => {
         method: "GET",
         headers: {
           accept: "application/json",
-          "x-cg-api-key": "CG-aPicBaB8MtdyAbM9LKsrAiaK",
+          "x-cg-api-key": import.meta.env.VITE_API_URL_Api_Key,
         },
       };
 
