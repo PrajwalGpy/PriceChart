@@ -1,20 +1,14 @@
 import React, { useState, useEffect } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import Summary from "./Summary";
+import Chart from "./Chart";
 
 const PriceChart = () => {
   const [showMenu, setShowMenu] = useState(false);
-  const [coins, setCoins] = useState([]); // Initialize as an empty array
-  const [selectedCoin, setSelectedCoin] = useState("Select a Coin");
+  const [coins, setCoins] = useState([]);
+  const [selectedCoinName, setSelectedCoinName] = useState("Select a Coin");
+  const [selectedCoin, setSelectedCoin] = useState(null);
   const [coinData, setCoinData] = useState(null);
-  const [activeTab, setActiveTab] = useState("Chart"); // Track the active tab
+  const [activeTab, setActiveTab] = useState("Chart");
 
   useEffect(() => {
     const fetchCoins = async () => {
@@ -28,14 +22,14 @@ const PriceChart = () => {
 
       try {
         const response = await fetch(
-          "https://api.coingecko.com/api/v3/coins/list",
+          "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100",
           options
         );
         const data = await response.json();
-        setCoins(data || []); // Ensure data is an array or set an empty array
+        setCoins(data || []);
       } catch (error) {
         console.error("Error fetching coins:", error);
-        setCoins([]); // Set coins to an empty array on error
+        setCoins([]);
       }
     };
 
@@ -53,46 +47,44 @@ const PriceChart = () => {
 
     try {
       const response = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=30&interval=daily`,
+        options
+      );
+      const marketDataResponse = await fetch(
         `https://api.coingecko.com/api/v3/coins/${coin.id}`,
         options
       );
-      const data = await response.json();
-      setCoinData(data);
-      console.log(data);
+      const priceData = await response.json();
+      const marketData = await marketDataResponse.json();
+
+      setCoinData({
+        ...marketData,
+        prices: priceData.prices,
+      });
     } catch (error) {
       console.error("Error fetching coin details:", error);
     }
   };
 
   useEffect(() => {
-    if (selectedCoin !== "Select a Coin") {
+    if (selectedCoinName !== "Select a Coin") {
       const selectedCoinObject = coins.find(
-        (coin) => coin.name === selectedCoin
+        (coin) => coin.name === selectedCoinName
       );
       if (selectedCoinObject) fetchCoinData(selectedCoinObject);
     }
-  }, [selectedCoin, coins]);
+  }, [selectedCoinName, coins]);
 
   const handleSelectCoin = (coin) => {
-    setSelectedCoin(coin.name);
+    setSelectedCoinName(coin.name);
+    setSelectedCoin(coin);
     setShowMenu(false);
   };
 
-  // Dummy data for chart (if actual historical data is not available)
-  const chartData = [
-    { name: "Mon", value: 62000 },
-    { name: "Tue", value: 63000 },
-    { name: "Wed", value: 64000 },
-    { name: "Thu", value: 61000 },
-    { name: "Fri", value: 65000 },
-    { name: "Sat", value: 64000 },
-    { name: "Sun", value: 63179 },
-  ];
-
   return (
-    <div className="p-6 bg-white rounded-lg shadow-lg max-w-lg mx-auto">
+    <div className="p-6 bg-white rounded-lg shadow-lg w-[730px] mx-auto">
       {/* Coin Information */}
-      {coinData ? (
+      {coinData && coinData.market_data ? (
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-3xl font-semibold text-gray-900">
@@ -127,7 +119,7 @@ const PriceChart = () => {
           onClick={() => setShowMenu(!showMenu)}
           className="py-2 px-4 bg-gray-200 rounded-lg w-full text-left focus:outline-none"
         >
-          {selectedCoin}
+          {selectedCoinName}
           <span className="float-right">▼</span>
         </button>
         {showMenu && (
@@ -182,27 +174,8 @@ const PriceChart = () => {
 
       {/* Conditional Rendering Based on Active Tab */}
       <div className="mt-4">
-        {activeTab === "Chart" && (
-          <ResponsiveContainer width="100%" height={300} className="mt-4">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#8884d8"
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-        {activeTab === "Summary" && (
-          <div className=" mt-4 overflow-y-scroll h-72 ">
-            <div className="">{coinData.description?.en} </div>
-          </div>
-        )}
+        {activeTab === "Chart" && coinData && <Chart coinData={coinData} />}
+        {activeTab === "Summary" && <Summary coinData={coinData} />}
       </div>
     </div>
   );
