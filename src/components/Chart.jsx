@@ -34,7 +34,7 @@ const Chart = ({ coinData }) => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [comparisonData, setComparisonData] = useState(null);
   const [showComparisonMenu, setShowComparisonMenu] = useState(false); // New state for comparison menu
-  const [coins, setCoins] = useState([]); // List of coins for comparison
+  const [coins, setCoins] = useState([]); // Initialize coins as an empty array
 
   useEffect(() => {
     const fetchCoins = async () => {
@@ -52,10 +52,16 @@ const Chart = ({ coinData }) => {
           options
         );
         const data = await response.json();
-        setCoins(data || []);
+
+        if (Array.isArray(data)) {
+          setCoins(data);
+        } else {
+          console.error("Unexpected API response format:", data);
+          setCoins([]); // Default to an empty array on error
+        }
       } catch (error) {
         console.error("Error fetching coins:", error);
-        setCoins([]);
+        setCoins([]); // Default to an empty array on error
       }
     };
 
@@ -68,7 +74,7 @@ const Chart = ({ coinData }) => {
         method: "GET",
         headers: {
           accept: "application/json",
-          "x-cg-api-key": "CG-aPicBaB8MtdyAbM9LKsrAiaK",
+          "x-cg-api-key": import.meta.env.VITE_API_URL_Api_Key,
         },
       };
 
@@ -203,7 +209,7 @@ const Chart = ({ coinData }) => {
       method: "GET",
       headers: {
         accept: "application/json",
-        "x-cg-api-key": "CG-aPicBaB8MtdyAbM9LKsrAiaK",
+        "x-cg-api-key": import.meta.env.VITE_API_URL_Api_Key,
       },
     };
 
@@ -289,23 +295,29 @@ const Chart = ({ coinData }) => {
         )}
       </div>
       <div className="price-details flex justify-between mt-2">
-        {/* <div className="price"></div> */}
         <p
           className={`text-lg ${
             currentPrice >= 0 ? "text-green-500" : "text-red-500"
           }`}
         >
-          {currentPrice}%
+          Current Price: {currentPrice}
         </p>
-        <div className="price-change">{priceChange}</div>
+        <p
+          className={`text-lg ${
+            priceChange >= 0 ? "text-green-500" : "text-red-500"
+          }`}
+        >
+          Change: {priceChange}
+        </p>
       </div>
-
-      {/* Comparison Menu */}
+      {/* Comparison menu */}
       {showComparisonMenu && (
-        <div className="comparison-menu absolute top-16 left-0 w-64 bg-white shadow-lg rounded-md p-4 z-10">
-          <h3 className="text-lg font-bold mb-2">Select a coin to compare:</h3>
-          <ul className="overflow-y-auto max-h-60">
-            {coins &&
+        <div className="comparison-menu absolute top-0 left-0 w-1/3 h-full bg-white shadow-md z-50 flex flex-col p-4">
+          <h3 className="text-xl font-semibold mb-4">
+            Select a coin to compare
+          </h3>
+          <ul className="flex flex-col gap-2 overflow-y-scroll h-80">
+            {Array.isArray(coins) && coins.length > 0 ? (
               coins.map((coin) => (
                 <li
                   key={coin.id}
@@ -314,8 +326,17 @@ const Chart = ({ coinData }) => {
                 >
                   {coin.name}
                 </li>
-              ))}
+              ))
+            ) : (
+              <p>No coins available for comparison.</p>
+            )}
           </ul>
+          <button
+            className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded"
+            onClick={() => setShowComparisonMenu(false)}
+          >
+            Cancel
+          </button>
         </div>
       )}
     </div>
