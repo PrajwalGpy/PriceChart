@@ -249,14 +249,14 @@ const Chart = ({ coinData }) => {
       <div className="chart-navigation flex justify-between items-center">
         <div className="flex justify-evenly">
           <button
-            className="px-2 py-2 rounded text-gray-700 ml-5 flex items-center gap-1"
+            className="md:px-2 md:py-2 rounded text-gray-700 ml-5 flex items-center gap-1 text-xs md:text-lg"
             onClick={handleFullScreen}
           >
             <img src={fullScreanicon} alt="fullscreanlogo" width={11} />
             {isFullScreen ? "Exit Full Screen" : "Full Screen"}
           </button>
           <button
-            className="px-4 py-2 rounded bg-gray-200 text-gray-700 ml-5 flex items-center gap-1"
+            className="md:px-4 md:py-2 rounded bg-gray-200 text-gray-700 ml-5 flex items-center gap-1 text-xs md:text-lg"
             onClick={handleCompare}
           >
             <IoIosAddCircleOutline />
@@ -267,7 +267,7 @@ const Chart = ({ coinData }) => {
           {["12h", "1d", "1w", "1m", "3m", "1y", "max"].map((period) => (
             <button
               key={period}
-              className={`ml-1 px-2 py-1 rounded text-sm hover:bg-blue-500 hover:text-white ${
+              className={`ml-1 md:px-2 md:py-1 rounded text-xs md:text-sm hover:bg-blue-500 hover:text-white ${
                 days === period
                   ? "bg-blue-500 text-white"
                   : "bg-gray-200 text-gray-700"
@@ -321,7 +321,7 @@ const Chart = ({ coinData }) => {
       {/* Comparison menu */}
       {showComparisonMenu && (
         <div className="comparison-menu absolute top-0 left-0 w-1/3 h-full bg-white shadow-md z-50 flex flex-col p-4">
-          <h3 className="text-xl font-semibold mb-4">
+          <h3 className="md:text-xl font-semibold mb-4 text-center">
             Select a coin to compare
           </h3>
           <ul className="flex flex-col gap-2 overflow-y-scroll h-80">

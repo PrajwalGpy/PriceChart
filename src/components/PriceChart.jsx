@@ -81,7 +81,7 @@ const PriceChart = () => {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-lg w-[730px] mx-auto">
+    <div className="p-6 bg-white rounded-lg shadow-lg md:w-[730px] w-[400px] mx-auto">
       {/* Coin Information */}
       {coinData && coinData ? (
         <div className="flex justify-between items-center">
@@ -147,8 +147,8 @@ const PriceChart = () => {
       </div>
 
       {/* Tabs */}
-      <div className="mt-4">
-        <ul className="flex space-x-4 text-gray-500 border-b border-gray-200">
+      <div className="mt-4 ">
+        <ul className="flex  flex-wrap space-x-4 text-gray-500 border-b border-gray-200">
           <li
             className={`py-2 px-4 cursor-pointer ${
               activeTab === "Chart"
