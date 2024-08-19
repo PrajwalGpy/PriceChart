@@ -1,11 +1,11 @@
 import React from "react";
 
 const Summary = ({ coinData }) => {
-  if (!coinData || !coinData.description || !coinData.description.en) {
+  if (!coinData || !coinData.coin.description || !coinData.coin.description) {
     return null;
   }
 
-  const summaryText = coinData.description.en.slice(0, 150) + "...";
+  const summaryText = coinData.coin.description.slice(0, 150) + "...";
 
   return (
     <div className="">
@@ -15,7 +15,7 @@ const Summary = ({ coinData }) => {
       </div>
       <div
         className="overflow-y-scroll h-72 whitespace-pre-line"
-        dangerouslySetInnerHTML={{ __html: coinData.description.en }}
+        dangerouslySetInnerHTML={{ __html: coinData.coin.description }}
       ></div>
     </div>
   );

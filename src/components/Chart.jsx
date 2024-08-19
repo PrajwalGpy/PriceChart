@@ -27,8 +27,9 @@ ChartJS.register(
 );
 
 const Chart = ({ coinData }) => {
+  console.log("coinData", coinData);
   const [chartData, setChartData] = useState({});
-  const [days, setDays] = useState(7); // Default to 1 week (7 days)
+  const [days, setDays] = useState("7d"); // Default to 1 week (7 days)
   const [currentPrice, setCurrentPrice] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -42,23 +43,19 @@ const Chart = ({ coinData }) => {
         method: "GET",
         headers: {
           accept: "application/json",
-          "x-cg-api-key": import.meta.env.VITE_API_URL_Api_Key,
+          "x-access-token": import.meta.env.VITE_API_URL_Api_Key,
         },
       };
 
       try {
         const response = await fetch(
-          "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100",
+          "https://api.coinranking.com/v2/coins?orderBy=price&limit=100",
           options
         );
         const data = await response.json();
 
-        if (Array.isArray(data)) {
-          setCoins(data);
-        } else {
-          console.error("Unexpected API response format:", data);
-          setCoins([]); // Default to an empty array on error
-        }
+        setCoins(data.data.coins || []); // Note the change here to data.data.coins
+        console.log("coins", data.data.coins); // Log the fetched coins
       } catch (error) {
         console.error("Error fetching coins:", error);
         setCoins([]); // Default to an empty array on error
@@ -68,31 +65,37 @@ const Chart = ({ coinData }) => {
     fetchCoins();
   }, []);
 
+  console.log("coinData", coinData?.coin.uuid);
+
   useEffect(() => {
     const fetchCoinsData = async () => {
       const options = {
         method: "GET",
         headers: {
           accept: "application/json",
-          "x-cg-api-key": import.meta.env.VITE_API_URL_Api_Key,
+          "x-access-token": import.meta.env.VITE_API_URL_Api_Key,
         },
       };
 
       try {
         const response = await fetch(
-          `https://api.coingecko.com/api/v3/coins/${coinData?.id}/market_chart?vs_currency=usd&days=${days}&interval=daily`,
+          `https://api.coinranking.com/v2/coin/${coinData?.coin.uuid}/history?timePeriod=${days}`,
           options
         );
         const data = await response.json();
+        console.log("data", data);
 
-        if (data && data.prices) {
-          const labels = data.prices.map(([timestamp]) =>
-            new Date(timestamp).toLocaleDateString("en-US", {
+        if (data && data.data && Array.isArray(data.data.history)) {
+          // Access the timestamp and price properties directly from each object
+          const labels = data.data.history.map((entry) =>
+            new Date(entry.timestamp).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
             })
           );
-          const prices = data.prices.map(([, price]) => price);
+          const prices = data.data.history.map((entry) =>
+            parseFloat(entry.price)
+          );
 
           const latestPrice = prices[prices.length - 1];
           const firstPrice = prices[0];
@@ -118,7 +121,7 @@ const Chart = ({ coinData }) => {
             labels: labels,
             datasets: [
               {
-                label: `${coinData.name} Price (USD)`,
+                label: `${coinData.coin.name} Price (USD)`,
                 data: prices,
                 borderColor: "#4B49AC",
                 borderWidth: 2,
@@ -153,7 +156,7 @@ const Chart = ({ coinData }) => {
       }
     };
 
-    if (coinData?.id) {
+    if (coinData?.coin.uuid) {
       fetchCoinsData();
     }
   }, [coinData, days, comparisonData]);
@@ -205,23 +208,28 @@ const Chart = ({ coinData }) => {
   };
 
   const handleSelectComparisonCoin = async (coin) => {
+    console.log("Selected Coin:", coin);
+    console.log("Comparison Data:", comparisonData);
     const options = {
       method: "GET",
       headers: {
         accept: "application/json",
-        "x-cg-api-key": import.meta.env.VITE_API_URL_Api_Key,
+        "x-access-token": import.meta.env.VITE_API_URL_Api_Key,
       },
     };
 
     try {
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=${days}&interval=daily`,
+        `https://api.coinranking.com/v2/coin/${coin.uuid}/history?timePeriod=${days}`,
         options
       );
       const data = await response.json();
 
-      if (data && data.prices) {
-        const prices = data.prices.map(([, price]) => price);
+      if (data && data.data && Array.isArray(data.data.history)) {
+        // Map over the history data correctly by accessing the price property directly
+        const prices = data.data.history.map((entry) =>
+          parseFloat(entry.price)
+        );
         setComparisonData({ name: coin.name, prices });
         setShowComparisonMenu(false); // Close menu after selection
       } else {
@@ -256,7 +264,7 @@ const Chart = ({ coinData }) => {
           </button>
         </div>
         <div>
-          {["1d", "3d", "1w", "1m", "6m", "1y", "max"].map((period) => (
+          {["12h", "1d", "1w", "1m", "3m", "1y", "max"].map((period) => (
             <button
               key={period}
               className={`ml-1 px-2 py-1 rounded text-sm hover:bg-blue-500 hover:text-white ${
@@ -266,19 +274,19 @@ const Chart = ({ coinData }) => {
               }`}
               onClick={() =>
                 setDays(
-                  period === "1d"
-                    ? 1
-                    : period === "3d"
-                    ? 3
-                    : period === "1w"
-                    ? 7
+                  period === "12h"
+                    ? "12h"
+                    : period === "1d"
+                    ? "24h"
+                    : period === "7d"
+                    ? "7d"
                     : period === "1m"
-                    ? 30
-                    : period === "6m"
-                    ? 180
+                    ? "30d"
+                    : period === "3m"
+                    ? "3m"
                     : period === "1y"
-                    ? 365
-                    : "max"
+                    ? "1y"
+                    : "3y"
                 )
               }
             >
@@ -320,7 +328,7 @@ const Chart = ({ coinData }) => {
             {Array.isArray(coins) && coins.length > 0 ? (
               coins.map((coin) => (
                 <li
-                  key={coin.id}
+                  key={coin.uuid}
                   className="cursor-pointer hover:bg-gray-100 p-2 rounded"
                   onClick={() => handleSelectComparisonCoin(coin)}
                 >

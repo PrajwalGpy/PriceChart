@@ -16,23 +16,23 @@ const PriceChart = () => {
         method: "GET",
         headers: {
           accept: "application/json",
-          "x-cg-api-key": import.meta.env.VITE_API_URL_Api_Key,
+          "x-access-token": import.meta.env.VITE_API_URL_Api_Key,
         },
       };
 
       try {
         const response = await fetch(
-          "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100",
+          "https://api.coinranking.com/v2/coins?orderBy=price&limit=100",
           options
         );
         const data = await response.json();
-        setCoins(data || []);
+        setCoins(data.data.coins || []);
       } catch (error) {
         console.error("Error fetching coins:", error);
         setCoins([]);
       }
     };
-
+    console.log(coins);
     fetchCoins();
   }, []);
 
@@ -41,26 +41,25 @@ const PriceChart = () => {
       method: "GET",
       headers: {
         accept: "application/json",
-        "x-cg-api-key": import.meta.env.VITE_API_URL_Api_Key,
+        "x-access-token": import.meta.env.VITE_API_URL_Api_Key,
       },
     };
 
     try {
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=30&interval=daily`,
+        `https://api.coinranking.com/v2/coin/${coin.uuid}?timePeriod=30d`,
         options
       );
       const marketDataResponse = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${coin.id}`,
+        `https://api.coinranking.com/v2/coin/${coin.uuid}`,
         options
       );
       const priceData = await response.json();
       const marketData = await marketDataResponse.json();
-
-      setCoinData({
-        ...marketData,
-        prices: priceData.prices,
-      });
+      console.log("pice", priceData);
+      console.log("daya", marketDataResponse);
+      setCoinData(priceData.data);
+      console.log("coinData", coinData);
     } catch (error) {
       console.error("Error fetching coin details:", error);
     }
@@ -84,28 +83,32 @@ const PriceChart = () => {
   return (
     <div className="p-6 bg-white rounded-lg shadow-lg w-[730px] mx-auto">
       {/* Coin Information */}
-      {coinData && coinData.market_data ? (
+      {coinData && coinData ? (
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-3xl font-semibold text-gray-900">
-              {coinData.market_data.current_price.usd.toLocaleString()} USD
+              {parseFloat(coinData.coin.price).toFixed(2)} USD
             </h2>
             <p
               className={`text-lg ${
-                coinData.market_data.price_change_percentage_24h >= 0
-                  ? "text-green-500"
-                  : "text-red-500"
+                coinData.coin.change >= 0 ? "text-green-500" : "text-red-500"
               }`}
             >
-              {coinData.market_data.price_change_percentage_24h}%
+              {coinData.coin.change}%
             </p>
           </div>
           <div className="text-right">
             <p className="text-gray-500 text-sm">
-              {coinData.market_data.high_24h.usd.toLocaleString()} (24h High)
+              {parseFloat(
+                coinData.coin.allTimeHigh.price.toLocaleString()
+              ).toFixed(2)}{" "}
+              (24h High)
             </p>
             <p className="text-gray-500 text-sm">
-              {coinData.market_data.low_24h.usd.toLocaleString()} (24h Low)
+              {parseFloat(
+                coinData.coin.allTimeHigh.price.toLocaleString()
+              ).toFixed(2)}{" "}
+              (24h Low)
             </p>
           </div>
         </div>
@@ -127,7 +130,7 @@ const PriceChart = () => {
             {Array.isArray(coins) && coins.length > 0 ? (
               coins.map((coin) => (
                 <li
-                  key={coin.id}
+                  key={coin.uuid}
                   onClick={() => handleSelectCoin(coin)}
                   className="py-2 px-4 cursor-pointer hover:bg-gray-100"
                 >
