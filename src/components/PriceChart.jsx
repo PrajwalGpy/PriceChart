@@ -10,6 +10,10 @@ const PriceChart = () => {
   const [coinData, setCoinData] = useState(null);
   const [activeTab, setActiveTab] = useState("Chart");
 
+  // New state for updated price and price change
+  const [currentPrice, setCurrentPrice] = useState(null);
+  const [priceChange, setPriceChange] = useState(null);
+
   useEffect(() => {
     const fetchCoins = async () => {
       const options = {
@@ -32,7 +36,7 @@ const PriceChart = () => {
         setCoins([]);
       }
     };
-    console.log(coins);
+
     fetchCoins();
   }, []);
 
@@ -56,10 +60,7 @@ const PriceChart = () => {
       );
       const priceData = await response.json();
       const marketData = await marketDataResponse.json();
-      console.log("pice", priceData);
-      console.log("daya", marketDataResponse);
       setCoinData(priceData.data);
-      console.log("coinData", coinData);
     } catch (error) {
       console.error("Error fetching coin details:", error);
     }
@@ -80,21 +81,28 @@ const PriceChart = () => {
     setShowMenu(false);
   };
 
+  const handlePriceDataUpdate = (currentPrice, priceChange) => {
+    setCurrentPrice(currentPrice);
+    setPriceChange(priceChange);
+  };
+
   return (
     <div className="p-6 bg-white rounded-lg shadow-lg md:w-[730px] w-[400px] mx-auto">
       {/* Coin Information */}
-      {coinData && coinData ? (
+      {coinData ? (
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-3xl font-semibold text-gray-900">
-              {parseFloat(coinData.coin.price).toFixed(2)} USD
+              {currentPrice || parseFloat(coinData.coin.price).toFixed(2)} USD
             </h2>
             <p
               className={`text-lg ${
-                coinData.coin.change >= 0 ? "text-green-500" : "text-red-500"
+                priceChange && parseFloat(priceChange) >= 0
+                  ? "text-green-500"
+                  : "text-red-500"
               }`}
             >
-              {coinData.coin.change}%
+              {priceChange || `${coinData.coin.change}%`}
             </p>
           </div>
           <div className="text-right">
@@ -177,7 +185,12 @@ const PriceChart = () => {
 
       {/* Conditional Rendering Based on Active Tab */}
       <div className="mt-4">
-        {activeTab === "Chart" && coinData && <Chart coinData={coinData} />}
+        {activeTab === "Chart" && coinData && (
+          <Chart
+            coinData={coinData}
+            onPriceDataUpdate={handlePriceDataUpdate}
+          />
+        )}
         {activeTab === "Summary" && <Summary coinData={coinData} />}
       </div>
     </div>

@@ -14,10 +14,9 @@ import {
   CategoryScale,
   Filler,
   BarElement,
-  BarController, // Add this import
+  BarController,
 } from "chart.js";
 
-// Register the necessary components, including BarController
 ChartJS.register(
   LineElement,
   PointElement,
@@ -28,18 +27,18 @@ ChartJS.register(
   CategoryScale,
   Filler,
   BarElement,
-  BarController // Register BarController
+  BarController
 );
 
-const Chart = ({ coinData }) => {
+const Chart = ({ coinData, onPriceDataUpdate }) => {
   const [chartData, setChartData] = useState({});
   const [days, setDays] = useState("7d"); // Default to 7 days
   const [currentPrice, setCurrentPrice] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [comparisonData, setComparisonData] = useState(null);
-  const [showComparisonMenu, setShowComparisonMenu] = useState(false); // Comparison menu state
-  const [coins, setCoins] = useState([]); // Available coins for comparison
+  const [showComparisonMenu, setShowComparisonMenu] = useState(false);
+  const [coins, setCoins] = useState([]);
 
   useEffect(() => {
     const fetchCoins = async () => {
@@ -83,12 +82,11 @@ const Chart = ({ coinData }) => {
           options
         );
         const data = await response.json();
-        console.log("date", data);
+
         if (data && data.data && Array.isArray(data.data.history)) {
-          // Map data and reverse it for chronological order
           const labels = data.data.history
             .map((entry) => {
-              const date = new Date(entry.timestamp * 1000); // Adjust for timestamp format
+              const date = new Date(entry.timestamp * 1000);
               return date.toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -99,10 +97,6 @@ const Chart = ({ coinData }) => {
           const prices = data.data.history
             .map((entry) => parseFloat(entry.price))
             .reverse();
-
-          const volumes = data.data.history
-            .map((entry) => entry.volume)
-            .reverse(); // Assuming 'volume' is a property
 
           const latestPrice = prices[prices.length - 1];
           const firstPrice = prices[0];
@@ -138,13 +132,6 @@ const Chart = ({ coinData }) => {
                 pointRadius: 0,
                 yAxisID: "y1",
               },
-              {
-                label: "Volume",
-                data: volumes,
-                backgroundColor: "rgba(0,0,0,0.1)",
-                type: "bar",
-                yAxisID: "y2",
-              },
             ],
           };
 
@@ -161,6 +148,9 @@ const Chart = ({ coinData }) => {
           }
 
           setChartData(newChartData);
+
+          // Call the callback function to pass data to the parent component
+          onPriceDataUpdate(currentPrice, priceChange);
         } else {
           console.error("Data format is incorrect or missing");
           setChartData({});
@@ -174,7 +164,7 @@ const Chart = ({ coinData }) => {
     if (coinData?.coin.uuid) {
       fetchCoinsData();
     }
-  }, [coinData, days, comparisonData]);
+  }, [coinData, days, comparisonData, onPriceDataUpdate]);
 
   const options = {
     responsive: true,
@@ -255,7 +245,7 @@ const Chart = ({ coinData }) => {
           parseFloat(entry.price)
         );
         setComparisonData({ name: coin.name, prices });
-        setShowComparisonMenu(false); // Close menu after selection
+        setShowComparisonMenu(false);
       } else {
         alert("Failed to fetch comparison coin data.");
       }
