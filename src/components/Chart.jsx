@@ -13,6 +13,7 @@ import {
   Legend,
   CategoryScale,
   Filler,
+  BarElement,
 } from "chart.js";
 
 ChartJS.register(
@@ -23,19 +24,19 @@ ChartJS.register(
   Tooltip,
   Legend,
   CategoryScale,
-  Filler
+  Filler,
+  BarElement
 );
 
 const Chart = ({ coinData }) => {
-  console.log("coinData", coinData);
   const [chartData, setChartData] = useState({});
-  const [days, setDays] = useState("7d"); // Default to 1 week (7 days)
+  const [days, setDays] = useState("7d"); // Default to 7 days
   const [currentPrice, setCurrentPrice] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [comparisonData, setComparisonData] = useState(null);
-  const [showComparisonMenu, setShowComparisonMenu] = useState(false); // New state for comparison menu
-  const [coins, setCoins] = useState([]); // Initialize coins as an empty array
+  const [showComparisonMenu, setShowComparisonMenu] = useState(false); // Comparison menu state
+  const [coins, setCoins] = useState([]); // Available coins for comparison
 
   useEffect(() => {
     const fetchCoins = async () => {
@@ -53,19 +54,15 @@ const Chart = ({ coinData }) => {
           options
         );
         const data = await response.json();
-
-        setCoins(data.data.coins || []); // Note the change here to data.data.coins
-        console.log("coins", data.data.coins); // Log the fetched coins
+        setCoins(data.data.coins || []);
       } catch (error) {
         console.error("Error fetching coins:", error);
-        setCoins([]); // Default to an empty array on error
+        setCoins([]);
       }
     };
 
     fetchCoins();
   }, []);
-
-  console.log("coinData", coinData?.coin.uuid);
 
   useEffect(() => {
     const fetchCoinsData = async () => {
@@ -83,19 +80,26 @@ const Chart = ({ coinData }) => {
           options
         );
         const data = await response.json();
-        console.log("data", data);
-
+        console.log("date", data);
         if (data && data.data && Array.isArray(data.data.history)) {
-          // Access the timestamp and price properties directly from each object
-          const labels = data.data.history.map((entry) =>
-            new Date(entry.timestamp).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
+          // Map data and reverse it for chronological order
+          const labels = data.data.history
+            .map((entry) => {
+              const date = new Date(entry.timestamp * 1000); // Adjust for timestamp format
+              return date.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              });
             })
-          );
-          const prices = data.data.history.map((entry) =>
-            parseFloat(entry.price)
-          );
+            .reverse();
+
+          const prices = data.data.history
+            .map((entry) => parseFloat(entry.price))
+            .reverse();
+
+          const volumes = data.data.history
+            .map((entry) => entry.volume)
+            .reverse(); // Assuming 'volume' is a property
 
           const latestPrice = prices[prices.length - 1];
           const firstPrice = prices[0];
@@ -129,6 +133,14 @@ const Chart = ({ coinData }) => {
                 fill: true,
                 backgroundColor: "rgba(75,73,172,0.2)",
                 pointRadius: 0,
+                yAxisID: "y1",
+              },
+              {
+                label: "Volume",
+                data: volumes,
+                backgroundColor: "rgba(0,0,0,0.1)",
+                type: "bar",
+                yAxisID: "y2",
               },
             ],
           };
@@ -137,7 +149,7 @@ const Chart = ({ coinData }) => {
             newChartData.datasets.push({
               label: `${comparisonData.name} Price (USD)`,
               data: comparisonData.prices,
-              borderColor: "#FF6347", // Tomato color for comparison
+              borderColor: "#FF6347",
               borderWidth: 2,
               tension: 0.1,
               fill: false,
@@ -151,7 +163,7 @@ const Chart = ({ coinData }) => {
           setChartData({});
         }
       } catch (error) {
-        console.error("Error fetching coins:", error);
+        console.error("Error fetching coin data:", error);
         setChartData({});
       }
     };
@@ -173,24 +185,36 @@ const Chart = ({ coinData }) => {
       },
     },
     scales: {
-      x: {
-        type: "category",
-        display: true,
-        title: {
-          display: false,
-        },
+      y1: {
+        type: "linear",
+        position: "left",
         grid: {
           display: false,
         },
       },
-      y: {
-        display: true,
-        title: {
-          display: false,
-        },
+      y2: {
+        type: "linear",
+        position: "right",
         grid: {
           display: false,
         },
+      },
+      x: {
+        type: "category",
+        display: true,
+        grid: {
+          display: false,
+        },
+      },
+    },
+    hover: {
+      mode: "index",
+      intersect: false,
+    },
+    elements: {
+      point: {
+        radius: 5,
+        hoverRadius: 7,
       },
     },
     animation: {
@@ -204,12 +228,10 @@ const Chart = ({ coinData }) => {
   };
 
   const handleCompare = () => {
-    setShowComparisonMenu(!showComparisonMenu); // Toggle comparison menu
+    setShowComparisonMenu(!showComparisonMenu);
   };
 
   const handleSelectComparisonCoin = async (coin) => {
-    console.log("Selected Coin:", coin);
-    console.log("Comparison Data:", comparisonData);
     const options = {
       method: "GET",
       headers: {
@@ -226,7 +248,6 @@ const Chart = ({ coinData }) => {
       const data = await response.json();
 
       if (data && data.data && Array.isArray(data.data.history)) {
-        // Map over the history data correctly by accessing the price property directly
         const prices = data.data.history.map((entry) =>
           parseFloat(entry.price)
         );
@@ -264,7 +285,7 @@ const Chart = ({ coinData }) => {
           </button>
         </div>
         <div>
-          {["12h", "1d", "1w", "1m", "3m", "1y", "max"].map((period) => (
+          {["12h", "1d", "7d", "1m", "3m", "1y", "max"].map((period) => (
             <button
               key={period}
               className={`ml-1 md:px-2 md:py-1 rounded text-xs md:text-sm hover:bg-blue-500 hover:text-white ${
@@ -299,52 +320,45 @@ const Chart = ({ coinData }) => {
         {chartData.labels ? (
           <Line data={chartData} options={options} />
         ) : (
-          <p>Loading chart data...</p>
+          <div>Loading chart data...</div>
         )}
       </div>
-      <div className="price-details flex justify-between mt-2">
-        <p
-          className={`text-lg ${
-            currentPrice >= 0 ? "text-green-500" : "text-red-500"
-          }`}
-        >
-          Current Price: {currentPrice}
-        </p>
-        <p
-          className={`text-lg ${
-            priceChange >= 0 ? "text-green-500" : "text-red-500"
-          }`}
-        >
-          Change: {priceChange}
-        </p>
+      <div className="chart-details flex flex-col items-center">
+        <div className="flex flex-col items-center md:flex-row md:gap-4 mt-4">
+          <span className="text-lg md:text-2xl font-bold">{currentPrice}</span>
+          <span
+            className={`text-sm md:text-lg font-bold ${
+              priceChange && priceChange.startsWith("+")
+                ? "text-green-500"
+                : "text-red-500"
+            }`}
+          >
+            {priceChange}
+          </span>
+        </div>
       </div>
-      {/* Comparison menu */}
       {showComparisonMenu && (
-        <div className="comparison-menu absolute top-0 left-0 w-1/3 h-full bg-white shadow-md z-50 flex flex-col p-4">
-          <h3 className="md:text-xl font-semibold mb-4 text-center">
-            Select a coin to compare
-          </h3>
-          <ul className="flex flex-col gap-2 overflow-y-scroll h-80">
-            {Array.isArray(coins) && coins.length > 0 ? (
-              coins.map((coin) => (
-                <li
+        <div className="absolute top-0 left-0 right-0 bottom-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-4 rounded shadow-lg">
+            <h2 className="text-lg font-bold mb-4">Select Coin to Compare</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {coins.map((coin) => (
+                <button
                   key={coin.uuid}
-                  className="cursor-pointer hover:bg-gray-100 p-2 rounded"
+                  className="bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300"
                   onClick={() => handleSelectComparisonCoin(coin)}
                 >
                   {coin.name}
-                </li>
-              ))
-            ) : (
-              <p>No coins available for comparison.</p>
-            )}
-          </ul>
-          <button
-            className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded"
-            onClick={() => setShowComparisonMenu(false)}
-          >
-            Cancel
-          </button>
+                </button>
+              ))}
+            </div>
+            <button
+              className="mt-4 text-red-500"
+              onClick={() => setShowComparisonMenu(false)}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>
