@@ -14,8 +14,10 @@ import {
   CategoryScale,
   Filler,
   BarElement,
+  BarController, // Add this import
 } from "chart.js";
 
+// Register the necessary components, including BarController
 ChartJS.register(
   LineElement,
   PointElement,
@@ -25,7 +27,8 @@ ChartJS.register(
   Legend,
   CategoryScale,
   Filler,
-  BarElement
+  BarElement,
+  BarController // Register BarController
 );
 
 const Chart = ({ coinData }) => {
