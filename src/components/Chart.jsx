@@ -1,42 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Line } from "react-chartjs-2";
-import fullScreanicon from "../assets/view-fullscreen-symbolic.svg";
+import { AgCharts } from "ag-charts-react";
+import "ag-charts-enterprise";
+import deepClone from "deepclone";
 import { IoIosAddCircleOutline } from "react-icons/io";
+import fullScreenIcon from "../assets/view-fullscreen-symbolic.svg";
 import "./Chart.css";
-import {
-  Chart as ChartJS,
-  LineElement,
-  PointElement,
-  LinearScale,
-  Title,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  Filler,
-  BarElement,
-  BarController,
-} from "chart.js";
-
-ChartJS.register(
-  LineElement,
-  PointElement,
-  LinearScale,
-  Title,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  Filler,
-  BarElement,
-  BarController
-);
 
 const Chart = ({ coinData, onPriceDataUpdate }) => {
-  const [chartData, setChartData] = useState({});
+  const [chartData, setChartData] = useState([]);
   const [days, setDays] = useState("7d"); // Default to 7 days
   const [currentPrice, setCurrentPrice] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [comparisonData, setComparisonData] = useState(null);
+  const [comparisonData, setComparisonData] = useState([]);
   const [showComparisonMenu, setShowComparisonMenu] = useState(false);
   const [coins, setCoins] = useState([]);
 
@@ -84,22 +60,23 @@ const Chart = ({ coinData, onPriceDataUpdate }) => {
         const data = await response.json();
 
         if (data && data.data && Array.isArray(data.data.history)) {
-          const labels = data.data.history
+          const chartData = data.data.history
             .map((entry) => {
-              const date = new Date(entry.timestamp * 1000);
-              return date.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              });
+              const date = new Date(entry.timestamp * 1000).toLocaleDateString(
+                "en-US",
+                {
+                  hour: "numeric",
+                  minute: "numeric",
+                  hour12: true,
+                }
+              );
+              const price = parseFloat(entry.price);
+              return { date, price };
             })
             .reverse();
 
-          const prices = data.data.history
-            .map((entry) => parseFloat(entry.price))
-            .reverse();
-
-          const latestPrice = prices[prices.length - 1];
-          const firstPrice = prices[0];
+          const latestPrice = chartData[chartData.length - 1]?.price;
+          const firstPrice = chartData[0]?.price;
           const priceChangeValue = latestPrice - firstPrice;
           const priceChangePercent = (
             (priceChangeValue / firstPrice) *
@@ -118,46 +95,27 @@ const Chart = ({ coinData, onPriceDataUpdate }) => {
             )} (${priceChangePercent}%)`
           );
 
-          const newChartData = {
-            labels: labels,
-            datasets: [
-              {
-                label: `${coinData.coin.name} Price (USD)`,
-                data: prices,
-                borderColor: "#4B49AC",
-                borderWidth: 2,
-                tension: 0.1,
-                fill: true,
-                backgroundColor: "rgba(75,73,172,0.2)",
-                pointRadius: 0,
-                yAxisID: "y1",
-              },
-            ],
-          };
-
-          if (comparisonData) {
-            newChartData.datasets.push({
-              label: `${comparisonData.name} Price (USD)`,
-              data: comparisonData.prices,
-              borderColor: "#FF6347",
-              borderWidth: 2,
-              tension: 0.1,
-              fill: false,
-              pointRadius: 0,
+          if (comparisonData.length > 0) {
+            // Merge comparison data
+            const mergedData = chartData.map((entry, index) => {
+              const comparisonPrice =
+                comparisonData[index]?.comparisonPrice || null;
+              return { ...entry, comparisonPrice: comparisonPrice };
             });
+            setChartData(mergedData);
+          } else {
+            setChartData(chartData);
           }
-
-          setChartData(newChartData);
 
           // Call the callback function to pass data to the parent component
           onPriceDataUpdate(currentPrice, priceChange);
         } else {
           console.error("Data format is incorrect or missing");
-          setChartData({});
+          setChartData([]);
         }
       } catch (error) {
         console.error("Error fetching coin data:", error);
-        setChartData({});
+        setChartData([]);
       }
     };
 
@@ -165,56 +123,6 @@ const Chart = ({ coinData, onPriceDataUpdate }) => {
       fetchCoinsData();
     }
   }, [coinData, days, comparisonData, onPriceDataUpdate]);
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: true,
-      },
-      tooltip: {
-        mode: "index",
-        intersect: false,
-      },
-    },
-    scales: {
-      y1: {
-        type: "linear",
-        position: "left",
-        grid: {
-          display: false,
-        },
-      },
-      y2: {
-        type: "linear",
-        position: "right",
-        grid: {
-          display: false,
-        },
-      },
-      x: {
-        type: "category",
-        display: true,
-        grid: {
-          display: false,
-        },
-      },
-    },
-    hover: {
-      mode: "index",
-      intersect: false,
-    },
-    elements: {
-      point: {
-        radius: 5,
-        hoverRadius: 7,
-      },
-    },
-    animation: {
-      duration: 1500,
-      easing: "easeOutQuad",
-    },
-  };
 
   const handleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -241,10 +149,18 @@ const Chart = ({ coinData, onPriceDataUpdate }) => {
       const data = await response.json();
 
       if (data && data.data && Array.isArray(data.data.history)) {
-        const prices = data.data.history.map((entry) =>
-          parseFloat(entry.price)
-        );
-        setComparisonData({ name: coin.name, prices });
+        const comparisonData = data.data.history
+          .map((entry) => ({
+            date: new Date(entry.timestamp * 1000).toLocaleDateString("en-US", {
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
+            }),
+            comparisonPrice: parseFloat(entry.price),
+          }))
+          .reverse();
+
+        setComparisonData(comparisonData);
         setShowComparisonMenu(false);
       } else {
         alert("Failed to fetch comparison coin data.");
@@ -253,6 +169,62 @@ const Chart = ({ coinData, onPriceDataUpdate }) => {
       console.error("Error fetching comparison coin:", error);
     }
   };
+
+  const options = {
+    data: chartData,
+    title: {
+      text: `${coinData?.coin.name}`,
+    },
+    series: [
+      {
+        yKey: "price",
+        xKey: "date",
+        stroke: "#6769EB",
+        marker: {
+          enabled: false,
+        },
+      },
+    ],
+    axes: [
+      {
+        type: "number",
+        position: "right",
+        label: {
+          formatter: ({ value }) => {
+            return `${Number(value).toLocaleString("en-GB", {
+              notation: "compact",
+              maximumFractionDigits: 4,
+            })}`;
+          },
+        },
+        crosshair: {
+          snap: false,
+        },
+      },
+      {
+        type: "category",
+        position: "bottom",
+
+        crosshair: {
+          snap: true,
+        },
+      },
+    ],
+    tooltip: {
+      enabled: false,
+    },
+  };
+
+  if (comparisonData.length > 0) {
+    options.series.push({
+      yKey: "comparisonPrice",
+      xKey: "date",
+      stroke: "#EB6767",
+      marker: {
+        enabled: false,
+      },
+    });
+  }
 
   return (
     <div
@@ -266,7 +238,7 @@ const Chart = ({ coinData, onPriceDataUpdate }) => {
             className="md:px-2 md:py-2 rounded text-gray-700 ml-5 flex items-center gap-1 text-xs md:text-lg"
             onClick={handleFullScreen}
           >
-            <img src={fullScreanicon} alt="fullscreanlogo" width={11} />
+            <img src={fullScreenIcon} alt="fullscreenlogo" width={11} />
             {isFullScreen ? "Exit Full Screen" : "Full Screen"}
           </button>
           <button
@@ -309,9 +281,12 @@ const Chart = ({ coinData, onPriceDataUpdate }) => {
           ))}
         </div>
       </div>
-      <div className="chart flex flex-col items-center justify-center">
-        {chartData.labels ? (
-          <Line data={chartData} options={options} />
+      <div className="chart flex flex-col items-center justify-center w-full">
+        {chartData.length > 0 ? (
+          <AgCharts
+            options={options}
+            style={{ width: "700px", height: "400px" }}
+          />
         ) : (
           <div>Loading chart data...</div>
         )}
@@ -334,7 +309,7 @@ const Chart = ({ coinData, onPriceDataUpdate }) => {
         <div className="absolute top-0 left-0 right-0 bottom-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
           <div className="bg-white p-4 rounded shadow-lg">
             <h2 className="text-lg font-bold mb-4">Select Coin to Compare</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className=" flex flex-col gap-3 h-52 w-52 overflow-y-scroll">
               {coins.map((coin) => (
                 <button
                   key={coin.uuid}
